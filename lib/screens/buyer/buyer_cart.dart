@@ -14,6 +14,7 @@ class _BuyerCartState extends State<BuyerCart> {
   final userId = FirebaseAuth.instance.currentUser?.uid;
   Set<String> selectedItems = {};
   bool isSelectionMode = false;
+  Set<String> checkoutItems = {};
 
   Map<String, int> categoryCounts = {
     'Donate': 0,
@@ -89,7 +90,6 @@ class _BuyerCartState extends State<BuyerCart> {
     if (userId == null) return;
 
     try {
-      // Start a batch write
       final batch = _firestore.batch();
 
       // Get current cart items
@@ -99,11 +99,25 @@ class _BuyerCartState extends State<BuyerCart> {
           .collection('cart')
           .get();
 
-      // Process each cart item
+      // Check if any items are selected for checkout
+      if (checkoutItems.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select items for checkout'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Process only selected items
       for (var doc in cartSnapshot.docs) {
+        // Skip if item is not selected for checkout
+        if (!checkoutItems.contains(doc.id)) continue;
+
         final data = doc.data();
 
-        // Create a purchase record
+        // Create purchase record
         final purchaseRef = _firestore.collection('purchases').doc();
         batch.set(purchaseRef, {
           'userId': userId,
@@ -126,10 +140,13 @@ class _BuyerCartState extends State<BuyerCart> {
         batch.delete(cartItemRef);
       }
 
-      // Commit the batch
       await batch.commit();
 
       if (mounted) {
+        setState(() {
+          checkoutItems.clear(); // Clear selected items after checkout
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Order placed successfully!'),
@@ -302,6 +319,7 @@ class _BuyerCartState extends State<BuyerCart> {
     List<String> categories,
   ) {
     bool isSelected = selectedItems.contains(itemId);
+    bool isSelectedForCheckout = checkoutItems.contains(itemId);
 
     return Card(
       elevation: 2,
@@ -321,7 +339,11 @@ class _BuyerCartState extends State<BuyerCart> {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.blue.withOpacity(0.1) : null,
+            color: isSelected
+                ? Colors.blue.withOpacity(0.1)
+                : isSelectedForCheckout
+                    ? Colors.green.withOpacity(0.1)
+                    : null,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -392,6 +414,20 @@ class _BuyerCartState extends State<BuyerCart> {
                   ],
                 ),
               ),
+              if (!isSelectionMode)
+                Checkbox(
+                  value: isSelectedForCheckout,
+                  activeColor: Colors.green,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      if (value ?? false) {
+                        checkoutItems.add(itemId);
+                      } else {
+                        checkoutItems.remove(itemId);
+                      }
+                    });
+                  },
+                ),
               if (isSelectionMode)
                 Checkbox(
                   value: isSelected,
@@ -419,7 +455,7 @@ class _BuyerCartState extends State<BuyerCart> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.transparent, // Made transparent as requested
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -428,44 +464,25 @@ class _BuyerCartState extends State<BuyerCart> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          StreamBuilder<QuerySnapshot>(
-            stream: _firestore
-                .collection('users')
-                .doc(userId)
-                .collection('cart')
-                .snapshots(),
-            builder: (context, snapshot) {
-              final itemCount =
-                  snapshot.hasData ? snapshot.data!.docs.length : 0;
-              return Text(
-                'Items in cart: $itemCount',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              );
-            },
-          ),
-          ElevatedButton.icon(
-            onPressed: _processCheckout,
-            icon: const Icon(Icons.shopping_cart_checkout),
-            label: const Text('Checkout'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+      child: Align(
+        // Using Align instead of Row
+        alignment: Alignment.centerRight, // Right alignment
+        child: ElevatedButton.icon(
+          onPressed: checkoutItems.isNotEmpty ? _processCheckout : null,
+          icon: const Icon(Icons.shopping_cart_checkout),
+          label: const Text('Checkout'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
