@@ -5,12 +5,46 @@ import 'package:firebase_auth/firebase_auth.dart';
 class SummaryPage extends StatelessWidget {
   final String imageUrl;
   final List<String> selectedCategories;
+  final String title;
+  final String description;
 
   const SummaryPage({
     Key? key,
     required this.imageUrl,
     required this.selectedCategories,
+    required this.title,
+    required this.description,
   }) : super(key: key);
+
+  void _showImageDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            alignment: Alignment.topRight,
+            children: [
+              InteractiveViewer(
+                panEnabled: true,
+                boundaryMargin: EdgeInsets.all(20),
+                minScale: 0.5,
+                maxScale: 4,
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,19 +64,154 @@ class SummaryPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.pop(context),
+        label: Text('Add More Items'),
+        icon: Icon(Icons.add_photo_alternate),
+        backgroundColor: Colors.blue,
+      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildItemPreview(),
-            _buildAllItemsList(),
+            _buildItemPreview(context),
+            _buildAllItemsList(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildItemPreview() {
+  void _showDetailsDialog(
+      BuildContext context, String title, String description) {
+    // State variables for tracking edit mode
+    bool isTitleEditing = false;
+    bool isDescriptionEditing = false;
+
+    // Controllers initialized with existing values
+    final titleController = TextEditingController(text: title);
+    final descriptionController = TextEditingController(text: description);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(24),
+                constraints: BoxConstraints(maxWidth: 400),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title section
+                      GestureDetector(
+                        onTap: () => setState(() => isTitleEditing = true),
+                        child: isTitleEditing
+                            ? TextField(
+                                controller: titleController,
+                                autofocus: true,
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                decoration: InputDecoration(
+                                  contentPadding:
+                                      EdgeInsets.symmetric(vertical: 8),
+                                  border: UnderlineInputBorder(),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color: Colors.blue, width: 2),
+                                  ),
+                                ),
+                                onSubmitted: (_) =>
+                                    setState(() => isTitleEditing = false),
+                              )
+                            : Text(
+                                title.isEmpty ? 'Untitled Item' : title,
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                      SizedBox(height: 24),
+
+                      // Description section
+                      Text(
+                        'Description',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => isDescriptionEditing = true),
+                        child: isDescriptionEditing
+                            ? TextField(
+                                controller: descriptionController,
+                                autofocus: true,
+                                maxLines: null,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[800],
+                                ),
+                                decoration: InputDecoration(
+                                  contentPadding:
+                                      EdgeInsets.symmetric(vertical: 8),
+                                  border: UnderlineInputBorder(),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                        color: Colors.blue, width: 2),
+                                  ),
+                                ),
+                                onSubmitted: (_) => setState(
+                                    () => isDescriptionEditing = false),
+                              )
+                            : Text(
+                                description.isEmpty
+                                    ? 'No description provided'
+                                    : description,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                      ),
+                      SizedBox(height: 24),
+
+                      // Close button with updated styling
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton(
+                          icon: Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(),
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildItemPreview(BuildContext context) {
     return Container(
       margin: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -59,17 +228,23 @@ class SummaryPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(child: CircularProgressIndicator());
-                },
+          GestureDetector(
+            onTap: () => _showImageDialog(context, imageUrl),
+            child: ClipRRect(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Hero(
+                  tag: 'preview-$imageUrl',
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(child: CircularProgressIndicator());
+                    },
+                  ),
+                ),
               ),
             ),
           ),
@@ -78,12 +253,44 @@ class SummaryPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Recently Added Item',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Recently Added Item',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (title.isNotEmpty)
+                            Padding(
+                              padding: EdgeInsets.only(top: 4),
+                              child: Text(
+                                title,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.info_outline),
+                      onPressed: () => _showDetailsDialog(
+                        context,
+                        title,
+                        description,
+                      ),
+                      tooltip: 'View Details',
+                    ),
+                  ],
                 ),
                 SizedBox(height: 12),
                 Text(
@@ -106,6 +313,26 @@ class SummaryPage extends StatelessWidget {
                     );
                   }).toList(),
                 ),
+                if (description.isNotEmpty) ...[
+                  SizedBox(height: 12),
+                  Text(
+                    'Description:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: Colors.grey[800],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 SizedBox(height: 16),
                 Row(
                   children: [
@@ -128,7 +355,7 @@ class SummaryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAllItemsList() {
+  Widget _buildAllItemsList(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return SizedBox();
 
@@ -138,7 +365,7 @@ class SummaryPage extends StatelessWidget {
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
-            'All Your Items',
+            'Your Items',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -171,7 +398,6 @@ class SummaryPage extends StatelessWidget {
                 ),
               );
             }
-
             return ListView.builder(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
@@ -180,6 +406,8 @@ class SummaryPage extends StatelessWidget {
                 final item = items[index].data() as Map<String, dynamic>;
                 final categories = List<String>.from(item['categories'] ?? []);
                 final itemImageUrl = item['imageUrl'] as String;
+                final itemTitle = item['title'] as String? ?? '';
+                final itemDescription = item['description'] as String? ?? '';
 
                 return Container(
                   margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -196,14 +424,21 @@ class SummaryPage extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      ClipRRect(
-                        borderRadius:
-                            BorderRadius.horizontal(left: Radius.circular(12)),
-                        child: Image.network(
-                          itemImageUrl,
-                          width: 120,
-                          height: 120,
-                          fit: BoxFit.cover,
+                      GestureDetector(
+                        onTap: () => _showImageDialog(context, itemImageUrl),
+                        child: Hero(
+                          tag: 'item-$itemImageUrl',
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.horizontal(
+                              left: Radius.circular(12),
+                            ),
+                            child: Image.network(
+                              itemImageUrl,
+                              width: 120,
+                              height: 120,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                         ),
                       ),
                       Expanded(
@@ -212,6 +447,16 @@ class SummaryPage extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              if (itemTitle.isNotEmpty)
+                                Padding(
+                                  padding: EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    itemTitle,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                               Wrap(
                                 spacing: 4,
                                 runSpacing: 4,
@@ -233,15 +478,37 @@ class SummaryPage extends StatelessWidget {
                                 }).toList(),
                               ),
                               SizedBox(height: 8),
-                              if (item['timestamp'] != null)
-                                Text(
-                                  _getFormattedDate(
-                                      item['timestamp'] as Timestamp),
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 12,
-                                  ),
-                                ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  if (item['timestamp'] != null)
+                                    Text(
+                                      _getFormattedDate(
+                                        item['timestamp'] as Timestamp,
+                                      ),
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  if (itemDescription.isNotEmpty)
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.info_outline,
+                                        size: 20,
+                                      ),
+                                      onPressed: () => _showDetailsDialog(
+                                        context,
+                                        itemTitle,
+                                        itemDescription,
+                                      ),
+                                      padding: EdgeInsets.zero,
+                                      constraints: BoxConstraints(),
+                                      tooltip: 'View Details',
+                                    ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -253,7 +520,7 @@ class SummaryPage extends StatelessWidget {
             );
           },
         ),
-        SizedBox(height: 16),
+        SizedBox(height: 80), // Add padding at bottom for FAB
       ],
     );
   }
