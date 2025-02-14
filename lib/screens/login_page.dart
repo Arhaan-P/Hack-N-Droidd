@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import '../widgets/role_selection_dialog.dart';
 import 'buyer/buyer_dashboard.dart';
 import 'seller/seller_dashboard.dart';
 
@@ -82,18 +83,12 @@ class LoginPage extends StatelessWidget {
         password: data.password!,
       );
 
-      String role =
-          (data.additionalSignupData?['role'] ?? 'buyer').toLowerCase();
-      if (role != 'buyer' && role != 'seller') {
-        role = 'buyer';
-      }
-
+      // Create user document (removed emailVerified field)
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
           .set({
         'email': data.name!,
-        'role': role,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -190,22 +185,6 @@ class LoginPage extends StatelessWidget {
             ),
           ),
         ),
-        additionalSignupFields: [
-          UserFormField(
-            keyName: 'role',
-            displayName: 'Role',
-            icon: const Icon(Icons.person),
-            defaultValue: 'buyer',
-            fieldValidator: (value) {
-              if (value == null ||
-                  (value.toLowerCase() != 'buyer' &&
-                      value.toLowerCase() != 'seller')) {
-                return 'Please enter either "buyer" or "seller"';
-              }
-              return null;
-            },
-          ),
-        ],
         loginProviders: [
           LoginProvider(
             icon: Icons.g_mobiledata,
@@ -234,71 +213,46 @@ class LoginPage extends StatelessWidget {
         onSubmitAnimationCompleted: () async {
           User? user = FirebaseAuth.instance.currentUser;
           if (user != null && context.mounted) {
-            final String? selectedRole = await showDialog<String>(
-              context: context,
-              barrierDismissible: false,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: const Text('Select Your Role'),
-                  content:
-                      const Text('Please choose your role in the application:'),
-                  actions: <Widget>[
-                    TextButton(
-                      child: const Text('Buyer'),
-                      onPressed: () {
-                        Navigator.of(context).pop('buyer');
-                        // Add navigation to SellerDashboard after popping the dialog
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (context) => BuyerDashboard()),
-                        );
-                      },
-                    ),
-                    TextButton(
-                      child: const Text('Seller'),
-                      onPressed: () {
-                        Navigator.of(context).pop('seller');
-                        // Add navigation to SellerDashboard after popping the dialog
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (context) => SellerDashboard()),
-                        );
-                      },
-                    ),
-                  ],
+            // Check if user already has a role
+            final userDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get();
+
+            if (userDoc.exists && userDoc.data()!.containsKey('role')) {
+              // User already has a role, navigate directly
+              final userRole = userDoc.data()?['role'] as String;
+              if (context.mounted) {
+                Navigator.pushReplacementNamed(
+                  context,
+                  userRole == 'seller'
+                      ? '/seller/dashboard'
+                      : '/buyer/dashboard',
                 );
-              },
-            );
+              }
+            } else {
+              // Show role selection only for new users
+              if (context.mounted) {
+                final String? selectedRole =
+                    await showRoleSelectionDialog(context);
 
-            if (selectedRole != null && context.mounted) {
-              try {
-                // Save role to Firestore
-                await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(user.uid)
-                    .set({
-                  'email': user.email,
-                  'role': selectedRole,
-                  'createdAt': FieldValue.serverTimestamp(),
-                }, SetOptions(merge: true));
+                if (selectedRole != null && context.mounted) {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .set({
+                    'role': selectedRole,
+                  }, SetOptions(merge: true));
 
-                // Navigate based on role
-                if (context.mounted) {
-                  if (selectedRole == 'buyer') {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                          builder: (context) => const BuyerDashboard()),
-                    );
-                  } else if (selectedRole == 'seller') {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                          builder: (context) => SellerDashboard()),
+                  if (context.mounted) {
+                    Navigator.pushReplacementNamed(
+                      context,
+                      selectedRole == 'seller'
+                          ? '/seller/dashboard'
+                          : '/buyer/dashboard',
                     );
                   }
                 }
-              } catch (e) {
-                print("Error during role selection: $e");
-                // Handle error appropriately
               }
             }
           }
