@@ -117,12 +117,13 @@ class _ProfileUIState extends State<ProfileUI> {
       padding: EdgeInsets.fromLTRB(20, 40, 20, 30),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF2D3250), // Dark navy blue
-              Color(0xFF424769), // Lighter navy blue
-            ]),
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.deepPurple[800]!,
+            Colors.deepPurple[600]!,
+          ],
+        ),
       ),
       child: Column(
         children: [
@@ -148,7 +149,7 @@ class _ProfileUIState extends State<ProfileUI> {
                   ),
                 ),
                 style: TextButton.styleFrom(
-                  backgroundColor: Color(0xFFE35D6A), // Softer red
+                  backgroundColor: Colors.red[400],
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -181,8 +182,8 @@ class _ProfileUIState extends State<ProfileUI> {
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
               color: userType.toLowerCase() == "seller"
-                  ? Color(0xFF2E8B57) // Sea green for seller
-                  : Color(0xFF4682B4), // Steel blue for buyer
+                  ? Colors.green[600]
+                  : Colors.blue[600],
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -199,8 +200,7 @@ class _ProfileUIState extends State<ProfileUI> {
     );
   }
 
-  Widget _buildInfoCard(
-      String title, String value, IconData icon, Color iconColor) {
+  Widget _buildInfoCard(String title, String value, IconData icon, Color iconColor) {
     return Card(
       elevation: 2,
       margin: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -270,12 +270,9 @@ class _ProfileUIState extends State<ProfileUI> {
               child: ListView(
                 padding: EdgeInsets.symmetric(vertical: 20),
                 children: [
-                  _buildInfoCard(
-                      'Email', email, Icons.email, Color(0xFF5C8AB4)),
-                  _buildInfoCard(
-                      'Phone', phone, Icons.phone, Color(0xFF67A67D)),
-                  _buildInfoCard('Location', location, Icons.location_on,
-                      Color(0xFFE3935B))
+                  _buildInfoCard('Email', email, Icons.email, Colors.blue),
+                  _buildInfoCard('Phone', phone, Icons.phone, Colors.green),
+                  _buildInfoCard('Location', location, Icons.location_on, Colors.orange),
                 ],
               ),
             ),
@@ -284,7 +281,7 @@ class _ProfileUIState extends State<ProfileUI> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToEditPage,
-        backgroundColor: Color(0xFF7077A1), // Muted blue-purple
+        backgroundColor: Colors.deepPurple,
         child: Icon(Icons.edit),
         elevation: 4,
       ),
