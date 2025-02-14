@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../login_page.dart';
+import 'buyer_cart.dart';
 
 class BuyerDashboard extends StatefulWidget {
   const BuyerDashboard({super.key});
@@ -13,6 +14,27 @@ class BuyerDashboard extends StatefulWidget {
 class _BuyerDashboardState extends State<BuyerDashboard> {
   String? selectedFilter;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  int cartItemCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCartItemCount();
+  }
+
+  Future<void> _loadCartItemCount() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId != null) {
+      final cartSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('cart')
+          .get();
+      setState(() {
+        cartItemCount = cartSnapshot.docs.length;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +47,44 @@ class _BuyerDashboardState extends State<BuyerDashboard> {
         backgroundColor: Colors.white,
         elevation: 1,
         actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart, color: Colors.black),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => BuyerCart()),
+                  ).then((_) =>
+                      _loadCartItemCount()); // Refresh count after returning
+                },
+              ),
+              if (cartItemCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '$cartItemCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black),
             onPressed: () async {
@@ -240,6 +300,39 @@ class ItemCard extends StatelessWidget {
     required this.categories,
   });
 
+  Future<void> _addToCart(
+      BuildContext context, String sellerId, String itemId) async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    // Add to cart collection
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('cart')
+        .add({
+      'sellerId': sellerId,
+      'itemId': itemId,
+      'timestamp': Timestamp.now(),
+      'title': title,
+      'description': description,
+      'imageUrl': imageUrl,
+      'categories': categories,
+    });
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Added to cart!')),
+      );
+      // Refresh cart count in dashboard
+      if (context.mounted) {
+        final dashboardState =
+            context.findAncestorStateOfType<_BuyerDashboardState>();
+        dashboardState?._loadCartItemCount();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -329,44 +422,49 @@ class ItemCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        if (sellerId == null) return;
-                        FirebaseFirestore.instance.collection('reminders').add({
-                          'userId': FirebaseAuth.instance.currentUser?.uid,
-                          'sellerId': sellerId,
-                          'itemId': itemId,
-                          'timestamp': Timestamp.now(),
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Reminder set')),
-                        );
-                      },
-                      icon: const Icon(Icons.notifications_active, size: 18),
-                      label: const Text('Remind Later'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.blue,
-                        side: const BorderSide(color: Colors.blue),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          if (sellerId == null) return;
+                          FirebaseFirestore.instance
+                              .collection('reminders')
+                              .add({
+                            'userId': FirebaseAuth.instance.currentUser?.uid,
+                            'sellerId': sellerId,
+                            'itemId': itemId,
+                            'timestamp': Timestamp.now(),
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Reminder set')),
+                          );
+                        },
+                        icon: const Icon(Icons.notifications_active, size: 18),
+                        label: const Text('Remind Later'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                          side: const BorderSide(color: Colors.blue),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        if (sellerId == null) return;
-                        _showBuyDialog(context, sellerId!, itemId);
-                      },
-                      icon: const Icon(Icons.shopping_cart, size: 18),
-                      label: const Text('Buy Now'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          if (sellerId == null) return;
+                          _addToCart(context, sellerId!, itemId);
+                        },
+                        icon: const Icon(Icons.add_shopping_cart, size: 18),
+                        label: const Text('Add to Cart'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
