@@ -5,7 +5,6 @@ import '../services/google_drive_service.dart';
 
 /// Conditional import for File (only for mobile)
 import 'dart:io' show File;
-import 'web_file.dart';
 
 class ImageUploader {
   static final GoogleDriveService _driveService = GoogleDriveService();
