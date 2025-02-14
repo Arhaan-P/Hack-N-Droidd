@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:io';
 import '../login_page.dart';
 import 'edit_profile_page.dart';
 
@@ -12,8 +10,6 @@ class ProfileUI extends StatefulWidget {
 }
 
 class _ProfileUIState extends State<ProfileUI> {
-  File? _image;
-  final picker = ImagePicker();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool isLoading = true;
@@ -45,7 +41,7 @@ class _ProfileUIState extends State<ProfileUI> {
         if (userData.exists) {
           setState(() {
             Map<String, dynamic> data = userData.data() as Map<String, dynamic>;
-            userType = data['role'] ?? ""; // 'seller' or 'buyer'
+            userType = data['role'] ?? "";
             name = data['displayName'] ?? "";
             email = currentUser.email ?? "";
             phone = data['phone'] ?? "";
@@ -62,16 +58,6 @@ class _ProfileUIState extends State<ProfileUI> {
       setState(() {
         isLoading = false;
       });
-    }
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    final pickedFile = await picker.pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
-      // TODO: Implement Firebase Storage upload for profile picture
     }
   }
 
@@ -98,7 +84,7 @@ class _ProfileUIState extends State<ProfileUI> {
             'location': result["location"],
           });
 
-          await _loadUserData(); // Reload the data
+          await _loadUserData();
         }
       } catch (e) {
         print('Error updating user data: $e');
@@ -110,112 +96,154 @@ class _ProfileUIState extends State<ProfileUI> {
   }
 
   Future<void> _signOut(BuildContext context) async {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Text('Sign Out'),
-          content: Text('Are you sure you want to sign out?'),
-          actions: [
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () => Navigator.of(dialogContext).pop(),
-            ),
-            TextButton(
-              child: Text(
-                'Sign Out',
-                style: TextStyle(color: Colors.red),
-              ),
-              onPressed: () async {
-                try {
-                  await FirebaseAuth.instance.signOut();
-                  Navigator.of(dialogContext).pop(); // Close dialog
-
-                  // Navigate to LoginPage using MaterialPageRoute
-                  if (context.mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => LoginPage()),
-                      (route) => false,
-                    );
-                  }
-                } catch (e) {
-                  print('Error signing out: $e');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error signing out')),
-                  );
-                }
-              },
-            ),
-          ],
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => LoginPage()),
+          (route) => false,
         );
-      },
-    );
+      }
+    } catch (e) {
+      print('Error signing out: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error signing out')),
+      );
+    }
   }
 
-  Widget _buildUserTypeBadge() {
+  Widget _buildProfileHeader() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      padding: EdgeInsets.fromLTRB(20, 40, 20, 30),
       decoration: BoxDecoration(
-        color: userType.toLowerCase() == "seller"
-            ? Colors.green[600]
-            : Colors.blue[600],
-        borderRadius: BorderRadius.circular(15),
+        gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF2D3250), // Dark navy blue
+              Color(0xFF424769), // Lighter navy blue
+            ]),
       ),
-      child: Text(
-        userType.toUpperCase(),
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildInfoList() {
-    return [
-      _buildInfoRow(Icons.email, Colors.blueAccent, "Email", email),
-      _buildInfoRow(Icons.phone, Colors.orangeAccent, "Phone", phone),
-      _buildInfoRow(Icons.location_on, Colors.green, "Location", location),
-    ];
-  }
-
-  Widget _buildInfoRow(
-    IconData icon,
-    Color color,
-    String title,
-    String subtitle,
-  ) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10.0),
-      child: Row(
+      child: Column(
         children: [
-          Icon(icon, color: color, size: 30),
-          SizedBox(width: 15.0),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Profile',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => _signOut(context),
+                icon: Icon(Icons.logout, color: Colors.white),
+                label: Text(
+                  'Sign Out',
                   style: TextStyle(
-                    fontSize: 15.0,
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 13.0,
-                    color: Colors.grey[700],
+                style: TextButton.styleFrom(
+                  backgroundColor: Color(0xFFE35D6A), // Softer red
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
                 ),
-              ],
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: Colors.white,
+            child: Icon(
+              Icons.person,
+              size: 60,
+              color: Colors.deepPurple[800],
+            ),
+          ),
+          SizedBox(height: 16),
+          Text(
+            name,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: userType.toLowerCase() == "seller"
+                  ? Color(0xFF2E8B57) // Sea green for seller
+                  : Color(0xFF4682B4), // Steel blue for buyer
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              userType.toUpperCase(),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(
+      String title, String value, IconData icon, Color iconColor) {
+    return Card(
+      elevation: 2,
+      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: iconColor),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -233,132 +261,32 @@ class _ProfileUIState extends State<ProfileUI> {
     }
 
     return Scaffold(
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              Expanded(
-                flex: 5,
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.deepPurple[800]!,
-                        Colors.deepPurpleAccent,
-                      ],
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      SizedBox(height: 60.0),
-                      Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 65.0,
-                            backgroundImage: _image != null
-                                ? FileImage(_image!)
-                                : AssetImage('assets/default_picture.jpg')
-                                    as ImageProvider,
-                            backgroundColor: Colors.white,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: GestureDetector(
-                              onTap: () => _pickImage(ImageSource.gallery),
-                              child: Container(
-                                padding: EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.deepPurple,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 10.0),
-                      Text(
-                        name,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 5.0),
-                      _buildUserTypeBadge(),
-                    ],
-                  ),
-                ),
+          _buildProfileHeader(),
+          Expanded(
+            child: Container(
+              color: Colors.grey[100],
+              child: ListView(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                children: [
+                  _buildInfoCard(
+                      'Email', email, Icons.email, Color(0xFF5C8AB4)),
+                  _buildInfoCard(
+                      'Phone', phone, Icons.phone, Color(0xFF67A67D)),
+                  _buildInfoCard('Location', location, Icons.location_on,
+                      Color(0xFFE3935B))
+                ],
               ),
-              Expanded(
-                flex: 5,
-                child: Container(
-                  color: Colors.grey[200],
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Card(
-                          margin: EdgeInsets.only(top: 45.0),
-                          child: Container(
-                            width: 310.0,
-                            padding: EdgeInsets.all(20.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: _buildInfoList(),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        Container(
-                          width: 310.0,
-                          child: ElevatedButton(
-                            onPressed: () => _signOut(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red[400],
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.logout, color: Colors.white),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Sign Out',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToEditPage,
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Color(0xFF7077A1), // Muted blue-purple
         child: Icon(Icons.edit),
+        elevation: 4,
       ),
     );
   }
