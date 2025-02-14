@@ -1,9 +1,5 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data';
 import '../../widgets/image_uploader.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'summary_page.dart';
@@ -14,22 +10,14 @@ class SellerDashboard extends StatefulWidget {
 }
 
 class _SellerDashboardState extends State<SellerDashboard> {
-  XFile? _pickedFile;
-  Uint8List? _webImage;
-  File? _mobileImageFile;
   String? _imageUrl;
   bool _isUploading = false;
-
   final List<String> _availableCategories = [
     'Donate',
     'Recyclable',
     'Non-Recyclable'
   ];
   final List<String> _selectedCategories = [];
-
-  Future<String?> _pickAndUploadImage() async {
-    return await ImageUploader.pickAndUploadImage(context);
-  }
 
   void _toggleCategory(String category) {
     setState(() {
@@ -41,43 +29,21 @@ class _SellerDashboardState extends State<SellerDashboard> {
     });
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
+  Future<void> _pickAndUploadImage() async {
+    if (_isUploading) return;
 
-    if (_pickedFile != null) {
-      return; // Prevent reopening the gallery
-    }
+    setState(() {
+      _isUploading = true;
+    });
 
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxHeight: 1024,
-      maxWidth: 1024,
-      imageQuality: 85,
-    );
-
-    if (pickedFile != null) {
-      setState(() {
-        _pickedFile = pickedFile;
-        if (kIsWeb) {
-          _webImage =
-              Uint8List.fromList(File(pickedFile.path).readAsBytesSync());
-        } else {
-          _mobileImageFile = File(pickedFile.path);
-        }
-      });
-
-      setState(() {
-        _isUploading = true;
-      });
-
-      String? uploadedUrl = await _pickAndUploadImage();
-
+    try {
+      String? uploadedUrl = await ImageUploader.pickAndUploadImage(context);
       if (uploadedUrl != null) {
         setState(() {
           _imageUrl = uploadedUrl;
         });
       }
-
+    } finally {
       setState(() {
         _isUploading = false;
       });
@@ -85,11 +51,18 @@ class _SellerDashboardState extends State<SellerDashboard> {
   }
 
   Future<void> _saveToFirebase() async {
-    if (_imageUrl == null || _selectedCategories.isEmpty) {
+    if (_imageUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please upload an image first')),
+      );
+      return;
+    }
+
+    if (_selectedCategories.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please select at least one category')),
       );
-      return; // ❌ Don't reset the page if there's an error!
+      return;
     }
 
     try {
@@ -101,79 +74,54 @@ class _SellerDashboardState extends State<SellerDashboard> {
         return;
       }
 
-      // Reference to seller's document
       final sellerDoc =
           FirebaseFirestore.instance.collection('sellers').doc(user.uid);
 
-      // Ensure seller document exists
       await sellerDoc.set({
         'name': user.displayName ?? "Unknown Seller",
-        'contact': user.email ?? "No contact info",
+        'email': user.email ?? "No contact info",
+        'lastUpdated': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // Add new item under seller's `items` subcollection
       await sellerDoc.collection('items').add({
         'imageUrl': _imageUrl,
         'categories': _selectedCategories,
         'timestamp': FieldValue.serverTimestamp(),
+        'status': 'active'
       });
 
-      // ✅ Only reset after successful upload
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => SummaryPage(
             imageUrl: _imageUrl!,
-            selectedCategories: _selectedCategories,
+            selectedCategories: List<String>.from(_selectedCategories),
           ),
         ),
       );
+
+      _resetForm();
     } catch (e) {
-      print('Error saving to Firebase: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving item: $e')),
       );
     }
   }
 
-  void _resetForNewUpload() {
-    Future.delayed(Duration(milliseconds: 500), () {
-      setState(() {
-        _pickedFile = null;
-        _webImage = null;
-        _mobileImageFile = null;
-        _imageUrl = null;
-        _selectedCategories.clear();
-      });
+  void _resetForm() {
+    setState(() {
+      _imageUrl = null;
+      _selectedCategories.clear();
     });
-  }
-
-  Widget _getImagePreview() {
-    if (_imageUrl != null) {
-      return Image.network(_imageUrl!, fit: BoxFit.cover);
-    } else if (_webImage != null) {
-      return Image.memory(_webImage!, fit: BoxFit.cover);
-    } else if (_mobileImageFile != null && !kIsWeb) {
-      return Image.file(_mobileImageFile!, fit: BoxFit.cover);
-    } else {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.upload, size: 48),
-          SizedBox(height: 8),
-          Text('Upload your rag image here!'),
-        ],
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Seller Dashboard'),
+        title: Text('List Your Item'),
         backgroundColor: Colors.white,
-        elevation: 0,
+        elevation: 1,
         titleTextStyle: TextStyle(
             color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
       ),
@@ -183,17 +131,17 @@ class _SellerDashboardState extends State<SellerDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildImageUploadSection(),
+              _buildImageSection(),
+              SizedBox(height: 24),
               if (_imageUrl != null) ...[
-                SizedBox(height: 24),
                 Text(
                   'Select Categories:',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 16),
-                _buildCategorySelection(),
+                _buildCategories(),
                 SizedBox(height: 24),
-                _buildContinueButton(),
+                _buildActionButtons(),
               ],
             ],
           ),
@@ -202,38 +150,67 @@ class _SellerDashboardState extends State<SellerDashboard> {
     );
   }
 
-  Widget _buildImageUploadSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: _isUploading ? null : _pickImage,
-          child: Container(
-            height: 200,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(8),
+  Widget _buildImageSection() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: GestureDetector(
+              onTap: _isUploading ? null : _pickAndUploadImage,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: _isUploading
+                    ? Center(child: CircularProgressIndicator())
+                    : _imageUrl != null
+                        ? ClipRRect(
+                            borderRadius:
+                                BorderRadius.vertical(top: Radius.circular(12)),
+                            child: Image.network(_imageUrl!, fit: BoxFit.cover),
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.cloud_upload_outlined,
+                                  size: 48, color: Colors.grey[600]),
+                              SizedBox(height: 8),
+                              Text(
+                                'Upload your item image',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ],
+                          ),
+              ),
             ),
-            child: _isUploading
-                ? Center(child: CircularProgressIndicator())
-                : _getImagePreview(),
           ),
-        ),
-        SizedBox(height: 16),
-        if (_imageUrl == null)
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: _isUploading ? null : _pickImage,
-              icon: Icon(Icons.photo_camera),
-              label: Text(_isUploading ? 'Uploading...' : 'Upload Image'),
+          if (_imageUrl == null)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton.icon(
+                onPressed: _isUploading ? null : _pickAndUploadImage,
+                icon: Icon(Icons.photo_library),
+                label:
+                    Text(_isUploading ? 'Uploading...' : 'Choose from Gallery'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 45),
+                ),
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildCategorySelection() {
+  Widget _buildCategories() {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -246,21 +223,40 @@ class _SellerDashboardState extends State<SellerDashboard> {
           backgroundColor: Colors.grey[200],
           selectedColor: Colors.blue[100],
           checkmarkColor: Colors.blue[800],
+          labelStyle: TextStyle(
+            color: isSelected ? Colors.blue[800] : Colors.black87,
+          ),
         );
       }).toList(),
     );
   }
 
-  Widget _buildContinueButton() {
-    return Center(
-      child: ElevatedButton.icon(
-        onPressed: () async {
-          await _saveToFirebase();
-          _resetForNewUpload();
-        },
-        icon: Icon(Icons.check),
-        label: Text('Continue'),
-      ),
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _saveToFirebase,
+            icon: Icon(Icons.check),
+            label: Text('Submit'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: Size(0, 45),
+              backgroundColor: Colors.green,
+            ),
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _resetForm,
+            icon: Icon(Icons.add_photo_alternate),
+            label: Text('New Item'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: Size(0, 45),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
