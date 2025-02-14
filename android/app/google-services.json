@@ -12,7 +12,20 @@
           "package_name": "com.example.hackathon"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "317107045627-i8t637ghsvigkkinjnkdq440qfu4d700.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.hackathon",
+            "certificate_hash": "35e465c2528503fc9419311991591b8fb726b15d"
+          }
+        },
+        {
+          "client_id": "317107045627-7g3e7ujintagb9elgjb93jefio08fvdm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAJ3pZqjAbKs-LcQsPCcbGBNqj8o0lPhVI"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "317107045627-7g3e7ujintagb9elgjb93jefio08fvdm.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "317107045627-maf24e37g824eaa2f9uvrga31jnle22d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.hackathon"
+              }
+            }
+          ]
         }
       }
     }

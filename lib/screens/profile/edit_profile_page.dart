@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart'; // Import geolocator package
+import 'package:app_settings/app_settings.dart'; // Import app_settings package
 
 class EditProfilePage extends StatefulWidget {
   final String name;
@@ -63,6 +65,80 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  // Method to fetch current location
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check if location services are enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Location services are not enabled, show a message to the user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Location services are disabled. Please enable location services.')),
+      );
+      return;
+    }
+
+    // Check location permissions
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      // Request permissions if denied
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        // Permissions are denied, show a message to the user
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Location permissions are denied. Please enable them in the app settings.'),
+            action: SnackBarAction(
+              label: 'Open Settings',
+              onPressed: () {
+                AppSettings.openAppSettings(); // Open app settings
+              },
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      // Permissions are permanently denied, show a message to the user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Location permissions are permanently denied. Please enable them in the app settings.'),
+          action: SnackBarAction(
+            label: 'Open Settings',
+            onPressed: () {
+              AppSettings.openAppSettings(); // Open app settings
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Fetch the current location
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        _locationController.text =
+            "${position.latitude}, ${position.longitude}";
+      });
+    } catch (e) {
+      print('Error getting location: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error getting location')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,6 +169,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       _buildTextField("Phone", Icons.phone, _phoneController),
                       _buildTextField(
                           "Location", Icons.location_on, _locationController),
+                      SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: _getCurrentLocation,
+                        child: Text("Use Current Location"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                        ),
+                      ),
                     ],
                   ),
                 ),

@@ -127,6 +127,48 @@ class LoginPage extends StatelessWidget {
     }
   }
 
+  void _handleSuccessfulLogin(BuildContext context, User user) async {
+    // Check if user already has a role
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    if (userDoc.exists && userDoc.data()!.containsKey('role')) {
+      // User already has a role, navigate directly
+      final userRole = userDoc.data()?['role'] as String;
+      if (context.mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          userRole == 'seller' ? '/seller/dashboard' : '/buyer/dashboard',
+        );
+      }
+    } else {
+      // Show role selection only for new users
+      if (context.mounted) {
+        final String? selectedRole = await showRoleSelectionDialog(context);
+
+        if (selectedRole != null && context.mounted) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set({
+            'role': selectedRole,
+          }, SetOptions(merge: true));
+
+          if (context.mounted) {
+            Navigator.pushReplacementNamed(
+              context,
+              selectedRole == 'seller'
+                  ? '/seller/dashboard'
+                  : '/buyer/dashboard',
+            );
+          }
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -187,28 +229,91 @@ class LoginPage extends StatelessWidget {
         ),
         loginProviders: [
           LoginProvider(
-            icon: Icons.g_mobiledata,
-            label: 'Google',
-            callback: () async {
-              try {
-                final GoogleSignInAccount? googleUser =
-                    await GoogleSignIn().signIn();
-                if (googleUser == null) return 'Google sign in cancelled';
+              icon: Icons.g_mobiledata,
+              label: 'Google',
+              callback: () async {
+                try {
+                  // First check if there's a previously signed-in account
+                  final GoogleSignIn googleSignIn = GoogleSignIn();
 
-                final GoogleSignInAuthentication googleAuth =
-                    await googleUser.authentication;
-                final credential = GoogleAuthProvider.credential(
-                  accessToken: googleAuth.accessToken,
-                  idToken: googleAuth.idToken,
-                );
+                  // Sign out first to force the account picker
+                  await googleSignIn.signOut();
 
-                await FirebaseAuth.instance.signInWithCredential(credential);
-                return null;
-              } catch (e) {
-                return 'Google sign-in failed: ${e.toString()}';
-              }
-            },
-          ),
+                  // Now show the account picker
+                  final GoogleSignInAccount? googleUser =
+                      await googleSignIn.signIn();
+
+                  if (googleUser == null) return 'Google sign-in cancelled';
+
+                  final GoogleSignInAuthentication googleAuth =
+                      await googleUser.authentication;
+                  final credential = GoogleAuthProvider.credential(
+                    accessToken: googleAuth.accessToken,
+                    idToken: googleAuth.idToken,
+                  );
+
+                  // Sign in with Firebase
+                  final userCredential = await FirebaseAuth.instance
+                      .signInWithCredential(credential);
+
+                  if (userCredential.user != null) {
+                    final userDoc = await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(userCredential.user!.uid)
+                        .get();
+
+                    // Check if this is a new user
+                    if (userCredential.additionalUserInfo?.isNewUser == true) {
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(userCredential.user!.uid)
+                          .set({
+                        'email': userCredential.user!.email,
+                        'createdAt': FieldValue.serverTimestamp(),
+                      });
+                    }
+
+                    Future.delayed(Duration(milliseconds: 1500), () async {
+                      if (context.mounted) {
+                        if (!userDoc.exists ||
+                            !userDoc.data()!.containsKey('role')) {
+                          final String? selectedRole =
+                              await showRoleSelectionDialog(context);
+                          if (selectedRole != null && context.mounted) {
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(userCredential.user!.uid)
+                                .set({
+                              'role': selectedRole,
+                            }, SetOptions(merge: true));
+
+                            if (context.mounted) {
+                              Navigator.pushReplacementNamed(
+                                context,
+                                selectedRole == 'seller'
+                                    ? '/seller/dashboard'
+                                    : '/buyer/dashboard',
+                              );
+                            }
+                          }
+                        } else {
+                          final userRole = userDoc.data()?['role'] as String;
+                          Navigator.pushReplacementNamed(
+                            context,
+                            userRole == 'seller'
+                                ? '/seller/dashboard'
+                                : '/buyer/dashboard',
+                          );
+                        }
+                      }
+                    });
+                  }
+
+                  return null;
+                } catch (e) {
+                  return 'Google sign-in failed: ${e.toString()}';
+                }
+              }),
         ],
         onSubmitAnimationCompleted: () async {
           User? user = FirebaseAuth.instance.currentUser;

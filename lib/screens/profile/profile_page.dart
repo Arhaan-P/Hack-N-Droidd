@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../login_page.dart';
 import 'edit_profile_page.dart';
 
@@ -97,7 +98,13 @@ class _ProfileUIState extends State<ProfileUI> {
 
   Future<void> _signOut(BuildContext context) async {
     try {
+      // Sign out from Firebase
       await FirebaseAuth.instance.signOut();
+
+      // Also sign out from Google Sign-In
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
+
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => LoginPage()),
@@ -106,9 +113,11 @@ class _ProfileUIState extends State<ProfileUI> {
       }
     } catch (e) {
       print('Error signing out: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error signing out')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error signing out')),
+        );
+      }
     }
   }
 
@@ -200,7 +209,8 @@ class _ProfileUIState extends State<ProfileUI> {
     );
   }
 
-  Widget _buildInfoCard(String title, String value, IconData icon, Color iconColor) {
+  Widget _buildInfoCard(
+      String title, String value, IconData icon, Color iconColor) {
     return Card(
       elevation: 2,
       margin: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -272,7 +282,8 @@ class _ProfileUIState extends State<ProfileUI> {
                 children: [
                   _buildInfoCard('Email', email, Icons.email, Colors.blue),
                   _buildInfoCard('Phone', phone, Icons.phone, Colors.green),
-                  _buildInfoCard('Location', location, Icons.location_on, Colors.orange),
+                  _buildInfoCard(
+                      'Location', location, Icons.location_on, Colors.orange),
                 ],
               ),
             ),
