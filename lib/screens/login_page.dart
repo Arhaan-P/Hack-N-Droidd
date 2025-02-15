@@ -184,46 +184,50 @@ class LoginPage extends StatelessWidget {
           pageColorLight: const Color(0xFF779CAB), // Light blue-grey
           pageColorDark: const Color(0xFF627C85), // Medium blue-grey
           titleStyle: const TextStyle(
-            color: Color(0xFF32DE8A), // Bright green
-            fontSize: 24,
+            color: Colors.white,
+            fontSize: 32,
             fontWeight: FontWeight.bold,
           ),
           cardTheme: CardTheme(
-            color: const Color(0xFF35524A), // Dark teal
+            color: const Color(0xFF35524A),
             elevation: 8,
           ),
           bodyStyle: const TextStyle(
             fontSize: 16,
-            color: Color(0xFFA2E8DD), // Light turquoise
+            color: Color(0xFFA2E8DD),
           ),
           textFieldStyle: const TextStyle(
-            color: Color(0xFFA2E8DD), // Light turquoise
+            color: Colors.white,
           ),
           buttonStyle: const TextStyle(
-            color: Color(0xFF35524A), // Dark teal
+            color: Color(0xFF35524A),
           ),
           buttonTheme: LoginButtonTheme(
-            backgroundColor: const Color(0xFFA2E8DD), // Light turquoise
-            highlightColor: const Color(0xFF32DE8A), // Bright green
+            backgroundColor: const Color(0xFFA2E8DD),
+            highlightColor: const Color(0xFF32DE8A),
             elevation: 5.0,
           ),
           inputTheme: InputDecorationTheme(
             filled: true,
-            fillColor: const Color(0xFF627C85), // Medium blue-grey
+            fillColor: const Color(0xFF627C85),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
-              borderSide:
-                  const BorderSide(color: Color(0xFFA2E8DD)), // Light turquoise
+              borderSide: const BorderSide(color: Color(0xFFA2E8DD)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.0),
+              borderSide: const BorderSide(color: Color(0xFFA2E8DD)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
-              borderSide:
-                  const BorderSide(color: Color(0xFF32DE8A)), // Bright green
+              borderSide: const BorderSide(color: Color(0xFF32DE8A)),
             ),
-            // Fix for placeholder text overlapping icons
             floatingLabelBehavior: FloatingLabelBehavior.never,
             labelStyle: const TextStyle(
-              color: Color(0xFFA2E8DD), // Light turquoise
+              color: Colors.white,
+            ),
+            hintStyle: const TextStyle(
+              color: Colors.white70,
             ),
           ),
         ),

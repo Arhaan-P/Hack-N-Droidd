@@ -6,8 +6,8 @@ import 'screens/login_page.dart';
 import 'screens/buyer/buyer_dashboard.dart';
 import 'firebase_options.dart';
 import 'screens/profile/profile_page.dart';
-import 'screens/seller/seller_dashboard.dart';
-import 'widgets/bottom_nav_scaffold.dart';
+import 'screens/seller/seller_dashboard1.dart';
+import 'screens/buyer/buyer_dashboard1.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,21 +53,16 @@ class MyApp extends StatelessWidget {
                 return const LoginPage();
               }
 
-              final userData =
-                  userSnapshot.data!.data() as Map<String, dynamic>;
+              final userData = userSnapshot.data!.data() as Map<String, dynamic>;
 
               if (!userData.containsKey('role')) {
                 return const LoginPage(); // Ensure role selection before dashboard access
               }
 
               final userRole = userData['role'] as String;
-              print(
-                  "Current User Role: $userRole"); // Debugging role assignment
-              return BottomNavScaffold(
-                userRole: userRole,
-                child:
-                    userRole == 'seller' ? SellerDashboard() : BuyerDashboard(),
-              );
+              print("Current User Role: $userRole"); // Debugging role assignment
+
+              return userRole == 'seller' ? SellerDashboard1() : BuyerDashboard1();
             },
           );
         },
@@ -76,26 +71,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/seller/dashboard': (context) => _buildDashboard('seller'),
         '/buyer/dashboard': (context) => _buildDashboard('buyer'),
-        '/profile': (context) => FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(FirebaseAuth.instance.currentUser?.uid)
-                  .get(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || !snapshot.data!.exists) {
-                  return const LoginPage();
-                }
-                final userData = snapshot.data!.data() as Map<String, dynamic>;
-                final userRole = userData['role'] as String;
-                return BottomNavScaffold(
-                  userRole: userRole,
-                  child: ProfileUI(),
-                );
-              },
-            ),
+        '/profile': (context) => ProfileUI(), // Directly using ProfileUI
       },
     );
   }
@@ -114,10 +90,7 @@ Widget _buildDashboard(String role) {
       if (!snapshot.hasData || !snapshot.data!.exists) {
         return const LoginPage();
       }
-      return BottomNavScaffold(
-        userRole: role,
-        child: role == 'seller' ? SellerDashboard() : BuyerDashboard(),
-      );
+      return role == 'seller' ? SellerDashboard1() : BuyerDashboard1();
     },
   );
 }

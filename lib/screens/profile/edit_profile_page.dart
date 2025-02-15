@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart'; // Import geolocator package
+import 'package:geocoding/geocoding.dart'; // Import geocoding package
 import 'package:app_settings/app_settings.dart'; // Import app_settings package
 
 class EditProfilePage extends StatefulWidget {
@@ -62,6 +63,28 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving changes')),
       );
+    }
+  }
+
+  // Method to convert coordinates to address
+  Future<String> _getAddressFromCoordinates(
+      double latitude, double longitude) async {
+    try {
+      // Convert coordinates to a list of placemarks
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(latitude, longitude);
+
+      // Extract the first placemark (most accurate result)
+      Placemark place = placemarks[0];
+
+      // Build the address string
+      String address =
+          "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
+
+      return address;
+    } catch (e) {
+      print('Error converting coordinates to address: $e');
+      return "Unknown Location"; // Return a default message if there's an error
     }
   }
 
@@ -127,9 +150,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+
+      // Convert coordinates to address
+      String address = await _getAddressFromCoordinates(
+          position.latitude, position.longitude);
+
+      // Update the location controller with the address
       setState(() {
-        _locationController.text =
-            "${position.latitude}, ${position.longitude}";
+        _locationController.text = address;
       });
     } catch (e) {
       print('Error getting location: $e');

@@ -3,18 +3,29 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class SummaryPage extends StatelessWidget {
-  final String imageUrl;
-  final List<String> selectedCategories;
-  final String title;
-  final String description;
+  final String? imageUrl;
+  final List<String>? selectedCategories;
+  final String? title;
+  final String? description;
+  final bool isViewMode;
 
+  // New constructor for viewing all items
+  SummaryPage.viewAll()
+      : imageUrl = null,
+        selectedCategories = null,
+        title = null,
+        description = null,
+        isViewMode = true;
+
+  // Original constructor for showing a newly added item
   const SummaryPage({
     Key? key,
     required this.imageUrl,
     required this.selectedCategories,
     required this.title,
     required this.description,
-  }) : super(key: key);
+  })  : isViewMode = false,
+        super(key: key);
 
   void _showImageDialog(BuildContext context, String imageUrl) {
     showDialog(
@@ -51,7 +62,7 @@ class SummaryPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('Item Summary'),
+        title: Text(isViewMode ? 'Your Items' : 'Item Summary'),
         backgroundColor: Colors.white,
         elevation: 1,
         titleTextStyle: TextStyle(
@@ -64,17 +75,19 @@ class SummaryPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pop(context),
-        label: Text('Add More Items'),
-        icon: Icon(Icons.add_photo_alternate),
-        backgroundColor: Colors.blue,
-      ),
+      floatingActionButton: isViewMode
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => Navigator.pop(context),
+              label: Text('Add More Items'),
+              icon: Icon(Icons.add_photo_alternate),
+              backgroundColor: Colors.blue,
+            ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildItemPreview(context),
+            if (!isViewMode && imageUrl != null) _buildItemPreview(context),
             _buildAllItemsList(context),
           ],
         ),
@@ -212,6 +225,11 @@ class SummaryPage extends StatelessWidget {
   }
 
   Widget _buildItemPreview(BuildContext context) {
+    // If any required field is null, return an empty container
+    if (imageUrl == null || selectedCategories == null) {
+      return Container();
+    }
+
     return Container(
       margin: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -229,7 +247,7 @@ class SummaryPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
-            onTap: () => _showImageDialog(context, imageUrl),
+            onTap: () => _showImageDialog(context, imageUrl!),
             child: ClipRRect(
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
               child: AspectRatio(
@@ -237,7 +255,7 @@ class SummaryPage extends StatelessWidget {
                 child: Hero(
                   tag: 'preview-$imageUrl',
                   child: Image.network(
-                    imageUrl,
+                    imageUrl!,
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
@@ -267,11 +285,11 @@ class SummaryPage extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (title.isNotEmpty)
+                          if (title?.isNotEmpty ?? false)
                             Padding(
                               padding: EdgeInsets.only(top: 4),
                               child: Text(
-                                title,
+                                title!,
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey[800],
@@ -285,8 +303,8 @@ class SummaryPage extends StatelessWidget {
                       icon: Icon(Icons.info_outline),
                       onPressed: () => _showDetailsDialog(
                         context,
-                        title,
-                        description,
+                        title ?? '',
+                        description ?? '',
                       ),
                       tooltip: 'View Details',
                     ),
@@ -305,7 +323,7 @@ class SummaryPage extends StatelessWidget {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: selectedCategories.map((category) {
+                  children: selectedCategories!.map((category) {
                     return Chip(
                       label: Text(category),
                       backgroundColor: _getCategoryColor(category),
@@ -313,7 +331,7 @@ class SummaryPage extends StatelessWidget {
                     );
                   }).toList(),
                 ),
-                if (description.isNotEmpty) ...[
+                if (description?.isNotEmpty ?? false) ...[
                   SizedBox(height: 12),
                   Text(
                     'Description:',
@@ -325,7 +343,7 @@ class SummaryPage extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    description,
+                    description!,
                     style: TextStyle(
                       color: Colors.grey[800],
                     ),

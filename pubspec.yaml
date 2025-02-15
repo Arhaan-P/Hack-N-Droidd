@@ -37,6 +37,8 @@ dependencies:
   universal_html: ^2.2.4
   app_settings: ^5.2.0
   geolocator: ^13.0.2
+  geocoding: ^3.0.0
+  smooth_page_indicator: ^1.2.0+3
 
 dev_dependencies:
   flutter_test:

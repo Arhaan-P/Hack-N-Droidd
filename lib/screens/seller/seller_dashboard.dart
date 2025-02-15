@@ -222,15 +222,30 @@ class _SellerDashboardState extends State<SellerDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('List Your Item'),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        titleTextStyle: TextStyle(
-          color: Colors.black,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+  title: Text('List Your Item'),
+  backgroundColor: Colors.white,
+  elevation: 1,
+  titleTextStyle: TextStyle(
+    color: Colors.black,
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+  ),
+  // Add this actions section
+  actions: [
+    IconButton(
+      icon: Icon(Icons.inventory, color: Colors.blue),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SummaryPage.viewAll(),
+          ),
+        );
+      },
+      tooltip: 'View Your Items',
+    ),
+  ],
+),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
