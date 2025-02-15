@@ -14,17 +14,35 @@ class _SellerDashboardState extends State<SellerDashboard> {
   bool _isUploading = false;
   final _descriptionController = TextEditingController();
   final _titleController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _customTypeController = TextEditingController();
+
   final List<String> _availableCategories = [
     'Donate',
     'Recyclable',
     'Non-Recyclable'
   ];
+
+  final List<String> _itemTypes = [
+    'Newspaper',
+    'Plastics',
+    'Glass',
+    'Metal',
+    'Electronics',
+    'Cardboard',
+    'Textiles',
+    'Other'
+  ];
+
+  final List<String> _selectedItemTypes = [];
   final List<String> _selectedCategories = [];
 
   @override
   void dispose() {
     _descriptionController.dispose();
     _titleController.dispose();
+    _priceController.dispose();
+    _customTypeController.dispose();
     super.dispose();
   }
 
@@ -36,86 +54,6 @@ class _SellerDashboardState extends State<SellerDashboard> {
         _selectedCategories.add(category);
       }
     });
-  }
-
-  void _showDetailsDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Container(
-            padding: EdgeInsets.all(24),
-            constraints: BoxConstraints(maxWidth: 400),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Item Details',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 24),
-                TextField(
-                  controller: _titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey[50],
-                  ),
-                ),
-                SizedBox(height: 16),
-                TextField(
-                  controller: _descriptionController,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey[50],
-                  ),
-                ),
-                SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Text('Save Details'),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _pickAndUploadImage() async {
@@ -131,7 +69,6 @@ class _SellerDashboardState extends State<SellerDashboard> {
         setState(() {
           _imageUrl = uploadedUrl;
         });
-        _showDetailsDialog(); // Show details dialog after image upload
       }
     } finally {
       setState(() {
@@ -151,6 +88,20 @@ class _SellerDashboardState extends State<SellerDashboard> {
     if (_selectedCategories.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please select at least one category')),
+      );
+      return;
+    }
+
+    if (_selectedItemTypes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select an item type')),
+      );
+      return;
+    }
+
+    if (_priceController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a price quote')),
       );
       return;
     }
@@ -178,8 +129,13 @@ class _SellerDashboardState extends State<SellerDashboard> {
       await sellerDoc.collection('items').add({
         'imageUrl': _imageUrl,
         'categories': _selectedCategories,
+        'itemTypes': [
+          ..._selectedItemTypes,
+          if (_selectedItemTypes.contains('Other')) _customTypeController.text
+        ],
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
+        'price': double.tryParse(_priceController.text) ?? 0.0,
         'timestamp': FieldValue.serverTimestamp(),
         'status': 'active'
       });
@@ -192,6 +148,10 @@ class _SellerDashboardState extends State<SellerDashboard> {
             selectedCategories: List<String>.from(_selectedCategories),
             title: _titleController.text,
             description: _descriptionController.text,
+            itemTypes: _selectedItemTypes.contains('Other')
+                ? [..._selectedItemTypes, _customTypeController.text]
+                : List<String>.from(_selectedItemTypes),
+            price: _priceController.text,
           ),
         ),
       );
@@ -215,6 +175,9 @@ class _SellerDashboardState extends State<SellerDashboard> {
       _selectedCategories.clear();
       _titleController.clear();
       _descriptionController.clear();
+      _priceController.clear();
+      _customTypeController.clear();
+      _selectedItemTypes.clear();
     });
   }
 
@@ -222,106 +185,69 @@ class _SellerDashboardState extends State<SellerDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-  title: Text('List Your Item'),
-  backgroundColor: Colors.white,
-  elevation: 1,
-  titleTextStyle: TextStyle(
-    color: Colors.black,
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-  ),
-  // Add this actions section
-  actions: [
-    IconButton(
-      icon: Icon(Icons.inventory, color: Colors.blue),
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SummaryPage.viewAll(),
+        title: Text(
+          'List Your Item',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
           ),
-        );
-      },
-      tooltip: 'View Your Items',
-    ),
-  ],
-),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildImageSection(),
-              SizedBox(height: 24),
-              if (_imageUrl != null) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Details:',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    TextButton.icon(
-                      onPressed: _showDetailsDialog,
-                      icon: Icon(Icons.edit),
-                      label: Text('Edit Details'),
-                    ),
-                  ],
+        ),
+        backgroundColor: Color(0xFF381F97),
+        elevation: 12,
+        shadowColor: Colors.black87,
+        centerTitle: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(25),
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white, size: 30),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.inventory, color: Colors.white, size: 30),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SummaryPage.viewAll(),
                 ),
-                SizedBox(height: 8),
-                _buildDetailsPreview(),
-                SizedBox(height: 24),
-                Text(
-                  'Select Categories:',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 16),
-                _buildCategories(),
-                SizedBox(height: 24),
-                _buildActionButtons(),
-              ],
+              );
+            },
+            tooltip: 'View Your Items',
+          ),
+        ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF381F97).withOpacity(0.1),
+              Color(0xFF512CB0).withOpacity(0.05),
+              Colors.white,
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDetailsPreview() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _titleController.text.isEmpty
-                ? 'No title added'
-                : _titleController.text,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: _titleController.text.isEmpty ? Colors.grey : Colors.black,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildImageSection(),
+                SizedBox(height: 24),
+                if (_imageUrl != null) ...[
+                  _buildFormSection(),
+                ],
+              ],
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            _descriptionController.text.isEmpty
-                ? 'No description added'
-                : _descriptionController.text,
-            style: TextStyle(
-              color: _descriptionController.text.isEmpty
-                  ? Colors.grey
-                  : Colors.black87,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -330,9 +256,15 @@ class _SellerDashboardState extends State<SellerDashboard> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFF381F97).withOpacity(0.1),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -342,26 +274,39 @@ class _SellerDashboardState extends State<SellerDashboard> {
               onTap: _isUploading ? null : _pickAndUploadImage,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                  color: Color(0xFF381F97).withOpacity(0.05),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: _isUploading
-                    ? Center(child: CircularProgressIndicator())
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF381F97),
+                          ),
+                        ),
+                      )
                     : _imageUrl != null
                         ? ClipRRect(
                             borderRadius:
-                                BorderRadius.vertical(top: Radius.circular(12)),
+                                BorderRadius.vertical(top: Radius.circular(20)),
                             child: Image.network(_imageUrl!, fit: BoxFit.cover),
                           )
                         : Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.cloud_upload_outlined,
-                                  size: 48, color: Colors.grey[600]),
+                              Icon(
+                                Icons.cloud_upload_outlined,
+                                size: 48,
+                                color: Color(0xFF381F97),
+                              ),
                               SizedBox(height: 8),
                               Text(
                                 'Upload your item image',
-                                style: TextStyle(color: Colors.grey[600]),
+                                style: TextStyle(
+                                  color: Color(0xFF381F97),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ],
                           ),
@@ -374,10 +319,19 @@ class _SellerDashboardState extends State<SellerDashboard> {
               child: ElevatedButton.icon(
                 onPressed: _isUploading ? null : _pickAndUploadImage,
                 icon: Icon(Icons.photo_library),
-                label:
-                    Text(_isUploading ? 'Uploading...' : 'Choose from Gallery'),
+                label: Text(
+                  _isUploading ? 'Uploading...' : 'Choose from Gallery',
+                  style: TextStyle(color: Colors.white),
+                ),
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF381F97),
+                  iconColor: Colors.white,
                   minimumSize: Size(double.infinity, 45),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
+                  shadowColor: Color(0xFF381F97).withOpacity(0.3),
                 ),
               ),
             ),
@@ -386,56 +340,254 @@ class _SellerDashboardState extends State<SellerDashboard> {
     );
   }
 
-  Widget _buildCategories() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: _availableCategories.map((category) {
-        final isSelected = _selectedCategories.contains(category);
-        return FilterChip(
-          label: Text(category),
-          selected: isSelected,
-          onSelected: (_) => _toggleCategory(category),
-          backgroundColor: Colors.grey[200],
-          selectedColor: Colors.blue[100],
-          checkmarkColor: Colors.blue[800],
-          labelStyle: TextStyle(
-            color: isSelected ? Colors.blue[800] : Colors.black87,
+  Widget _buildFormSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFF381F97).withOpacity(0.1),
+            blurRadius: 20,
+            offset: Offset(0, 10),
           ),
-        );
-      }).toList(),
+        ],
+      ),
+      padding: EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTitleField(),
+          SizedBox(height: 20),
+          _buildDescriptionField(),
+          SizedBox(height: 20),
+          _buildPriceField(),
+          SizedBox(height: 30),
+          _buildItemTypeSelection(),
+          SizedBox(height: 30),
+          Text(
+            'Select Categories:',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF381F97),
+            ),
+          ),
+          SizedBox(height: 16),
+          _buildCategories(),
+          SizedBox(height: 30),
+          _buildSubmitButton(),
+        ],
+      ),
     );
   }
 
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () async {
-              print("Submit button pressed"); // Debug print
-              await _saveToFirebase();
-            },
-            icon: Icon(Icons.check),
-            label: Text('Submit'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: Size(0, 45),
-              backgroundColor: Colors.green,
+  Widget _buildTitleField() {
+    return TextField(
+      controller: _titleController,
+      decoration: InputDecoration(
+        labelText: 'Title',
+        labelStyle: TextStyle(color: Color(0xFF512CB0)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Color(0xFF381F97)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Color(0xFF381F97), width: 2),
+        ),
+        filled: true,
+        fillColor: Color(0xFF381F97).withOpacity(0.05),
+      ),
+    );
+  }
+
+  Widget _buildDescriptionField() {
+    return TextField(
+      controller: _descriptionController,
+      maxLines: 4,
+      decoration: InputDecoration(
+        labelText: 'Description',
+        labelStyle: TextStyle(color: Color(0xFF512CB0)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Color(0xFF381F97)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Color(0xFF381F97), width: 2),
+        ),
+        filled: true,
+        fillColor: Color(0xFF381F97).withOpacity(0.05),
+      ),
+    );
+  }
+
+  Widget _buildPriceField() {
+    return TextField(
+      controller: _priceController,
+      keyboardType: TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(
+        labelText: 'Price Quote (₹)',
+        labelStyle: TextStyle(color: Color(0xFF512CB0)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Color(0xFF381F97)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Color(0xFF381F97), width: 2),
+        ),
+        filled: true,
+        fillColor: Color(0xFF381F97).withOpacity(0.05),
+      ),
+    );
+  }
+
+  Widget _buildItemTypeSelection() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        color: Colors.white,
+        border: Border.all(color: Color(0xFF381F97).withOpacity(0.2)),
+      ),
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Item Types (Select all that apply):',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF381F97),
             ),
           ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _resetForm,
-            icon: Icon(Icons.add_photo_alternate),
-            label: Text('New Item'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: Size(0, 45),
-            ),
+          SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _itemTypes.map((type) {
+              final isSelected = _selectedItemTypes.contains(type);
+              return FilterChip(
+                label: Text(type),
+                selected: isSelected,
+                onSelected: (_) {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedItemTypes.remove(type);
+                      if (type == 'Other') {
+                        _customTypeController.clear();
+                      }
+                    } else {
+                      _selectedItemTypes.add(type);
+                    }
+                  });
+                },
+                backgroundColor: Color(0xFF381F97).withOpacity(0.1),
+                selectedColor: Color(0xFF512CB0).withOpacity(0.2),
+                checkmarkColor: Color(0xFF381F97),
+                labelStyle: TextStyle(
+                  color: isSelected ? Color(0xFF381F97) : Colors.black87,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              );
+            }).toList(),
           ),
+          if (_selectedItemTypes.contains('Other')) ...[
+            SizedBox(height: 16),
+            TextField(
+              controller: _customTypeController,
+              decoration: InputDecoration(
+                labelText: 'Specify Additional Item Type',
+                labelStyle: TextStyle(color: Color(0xFF512CB0)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Color(0xFF381F97)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Color(0xFF381F97), width: 2),
+                ),
+                filled: true,
+                fillColor: Color(0xFF381F97).withOpacity(0.05),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategories() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        color: Colors.white,
+        border: Border.all(color: Color(0xFF381F97).withOpacity(0.2)),
+      ),
+      padding: EdgeInsets.all(16),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: _availableCategories.map((category) {
+          final isSelected = _selectedCategories.contains(category);
+          return FilterChip(
+            label: Text(category),
+            selected: isSelected,
+            onSelected: (_) => _toggleCategory(category),
+            backgroundColor: Color(0xFF381F97).withOpacity(0.1),
+            selectedColor: Color(0xFF512CB0).withOpacity(0.2),
+            checkmarkColor: Color(0xFF381F97),
+            labelStyle: TextStyle(
+              color: isSelected ? Color(0xFF381F97) : Colors.black87,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return Container(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: _saveToFirebase,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle, size: 24),
+            SizedBox(width: 8),
+            Text(
+              'Submit',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
-      ],
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          elevation: 8,
+          shadowColor: Colors.green.withOpacity(0.5),
+          padding: EdgeInsets.symmetric(vertical: 16),
+        ),
+      ),
     );
   }
 }

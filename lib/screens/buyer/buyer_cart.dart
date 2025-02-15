@@ -16,6 +16,12 @@ class _BuyerCartState extends State<BuyerCart> {
   bool isSelectionMode = false;
   Set<String> checkoutItems = {};
 
+  // Define the new colors
+  final Color primaryColor = const Color(0xFF371F97); // #371f97
+  final Color lightPurple = const Color(0xFFEEE8F6); // #eee8f6
+  final Color whiteColor = const Color(0xFFFFFFFF); // #ffffff
+  final Color blackColor = const Color(0xFF000000); // #000000
+
   Map<String, int> categoryCounts = {
     'Donate': 0,
     'Recyclable': 0,
@@ -102,9 +108,9 @@ class _BuyerCartState extends State<BuyerCart> {
       // Check if any items are selected for checkout
       if (checkoutItems.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select items for checkout'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text('Please select items for checkout'),
+            backgroundColor: primaryColor,
           ),
         );
         return;
@@ -148,9 +154,9 @@ class _BuyerCartState extends State<BuyerCart> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Order placed successfully!'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Order placed successfully!'),
+            backgroundColor: _getCategoryColor('Donate'),
           ),
         );
         Navigator.pop(context);
@@ -171,13 +177,13 @@ class _BuyerCartState extends State<BuyerCart> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Shopping Cart',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        title: Text(
+          'JunkWunk',
+          style: TextStyle(color: blackColor, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: whiteColor,
         elevation: 1,
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: IconThemeData(color: blackColor),
         actions: [
           if (isSelectionMode) ...[
             IconButton(
@@ -185,7 +191,7 @@ class _BuyerCartState extends State<BuyerCart> {
               onPressed: selectedItems.isNotEmpty ? _deleteSelectedItems : null,
             ),
             IconButton(
-              icon: const Icon(Icons.close),
+              icon: Icon(Icons.close, color: blackColor),
               onPressed: () {
                 setState(() {
                   isSelectionMode = false;
@@ -205,11 +211,13 @@ class _BuyerCartState extends State<BuyerCart> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildCategoryChip('Donate', Colors.green),
+                  _buildCategoryChip('Donate', _getCategoryColor('Donate')),
                   const SizedBox(width: 8),
-                  _buildCategoryChip('Recyclable', Colors.blue),
+                  _buildCategoryChip(
+                      'Recyclable', _getCategoryColor('Recyclable')),
                   const SizedBox(width: 8),
-                  _buildCategoryChip('Non-Recyclable', Colors.orange),
+                  _buildCategoryChip(
+                      'Non-Recyclable', _getCategoryColor('Non-Recyclable')),
                 ],
               ),
             ),
@@ -224,7 +232,8 @@ class _BuyerCartState extends State<BuyerCart> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(
+                      child: CircularProgressIndicator(color: primaryColor));
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -233,13 +242,13 @@ class _BuyerCartState extends State<BuyerCart> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.shopping_cart_outlined,
-                            size: 64, color: Colors.grey[400]),
+                            size: 64, color: lightPurple),
                         const SizedBox(height: 16),
                         Text(
                           'Your cart is empty',
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey[600],
+                            color: primaryColor.withOpacity(0.6),
                           ),
                         ),
                       ],
@@ -299,8 +308,8 @@ class _BuyerCartState extends State<BuyerCart> {
             ),
             child: Text(
               '${categoryCounts[category]}',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: whiteColor,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
@@ -340,9 +349,9 @@ class _BuyerCartState extends State<BuyerCart> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isSelected
-                ? Colors.blue.withOpacity(0.1)
+                ? primaryColor.withOpacity(0.1)
                 : isSelectedForCheckout
-                    ? Colors.green.withOpacity(0.1)
+                    ? _getCategoryColor('Donate').withOpacity(0.1)
                     : null,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -359,8 +368,8 @@ class _BuyerCartState extends State<BuyerCart> {
                   errorBuilder: (context, error, stackTrace) => Container(
                     width: 80,
                     height: 80,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.image_not_supported),
+                    color: lightPurple,
+                    child: Icon(Icons.image_not_supported, color: primaryColor),
                   ),
                 ),
               ),
@@ -371,9 +380,10 @@ class _BuyerCartState extends State<BuyerCart> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
+                        color: blackColor,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -382,7 +392,7 @@ class _BuyerCartState extends State<BuyerCart> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: blackColor.withOpacity(0.6),
                         fontSize: 14,
                       ),
                     ),
@@ -417,7 +427,7 @@ class _BuyerCartState extends State<BuyerCart> {
               if (!isSelectionMode)
                 Checkbox(
                   value: isSelectedForCheckout,
-                  activeColor: Colors.green,
+                  activeColor: primaryColor,
                   onChanged: (bool? value) {
                     setState(() {
                       if (value ?? false) {
@@ -431,6 +441,7 @@ class _BuyerCartState extends State<BuyerCart> {
               if (isSelectionMode)
                 Checkbox(
                   value: isSelected,
+                  activeColor: primaryColor,
                   onChanged: (bool? value) {
                     setState(() {
                       if (value ?? false) {
@@ -458,7 +469,7 @@ class _BuyerCartState extends State<BuyerCart> {
         color: Colors.transparent, // Made transparent as requested
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: blackColor.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -472,8 +483,8 @@ class _BuyerCartState extends State<BuyerCart> {
           icon: const Icon(Icons.shopping_cart_checkout),
           label: const Text('Checkout'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
+            backgroundColor: primaryColor,
+            foregroundColor: whiteColor,
             padding: const EdgeInsets.symmetric(
               horizontal: 24,
               vertical: 12,
@@ -490,13 +501,13 @@ class _BuyerCartState extends State<BuyerCart> {
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
       case 'donate':
-        return Colors.green;
+        return const Color(0xFF371F97); // Use primary color for donate
       case 'recyclable':
-        return Colors.blue;
+        return const Color(0xFF371F97); // Use primary color for recyclable
       case 'non-recyclable':
-        return Colors.orange;
+        return const Color(0xFF371F97); // Use primary color for non-recyclable
       default:
-        return Colors.grey;
+        return const Color(0xFF371F97); // Default to primary color
     }
   }
 }

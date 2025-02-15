@@ -176,51 +176,51 @@ class LoginPage extends StatelessWidget {
         onLogin: _authUser,
         onSignup: _signUpUser,
         onRecoverPassword: _recoverPassword,
-        title: 'Hackathon App',
+        title: 'JunkWunk',
         theme: LoginTheme(
-          primaryColor: const Color(0xFF35524A), // Dark teal
-          accentColor: const Color(0xFFA2E8DD), // Light turquoise
+          primaryColor: const Color(0xFF371f97), // Dark purple
+          accentColor: const Color(0xFFEEE8F6), // Light lavender
           errorColor: Colors.redAccent,
-          pageColorLight: const Color(0xFF779CAB), // Light blue-grey
-          pageColorDark: const Color(0xFF627C85), // Medium blue-grey
+          pageColorLight: const Color(0xFFEEE8F6), // Light lavender
+          pageColorDark: const Color(0xFF371f97), // Dark purple
           titleStyle: const TextStyle(
             color: Colors.white,
             fontSize: 32,
             fontWeight: FontWeight.bold,
           ),
           cardTheme: CardTheme(
-            color: const Color(0xFF35524A),
+            color: const Color(0xFF371f97),
             elevation: 8,
           ),
           bodyStyle: const TextStyle(
             fontSize: 16,
-            color: Color(0xFFA2E8DD),
+            color: Color(0xFFEEE8F6),
           ),
           textFieldStyle: const TextStyle(
             color: Colors.white,
           ),
           buttonStyle: const TextStyle(
-            color: Color(0xFF35524A),
+            color: Color(0xFF371f97),
           ),
           buttonTheme: LoginButtonTheme(
-            backgroundColor: const Color(0xFFA2E8DD),
-            highlightColor: const Color(0xFF32DE8A),
+            backgroundColor: const Color(0xFFEEE8F6),
+            highlightColor: const Color(0xFFFFFFFF),
             elevation: 5.0,
           ),
           inputTheme: InputDecorationTheme(
             filled: true,
-            fillColor: const Color(0xFF627C85),
+            fillColor: const Color(0xFFEEE8F6).withOpacity(0.2),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
-              borderSide: const BorderSide(color: Color(0xFFA2E8DD)),
+              borderSide: const BorderSide(color: Color(0xFFEEE8F6)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
-              borderSide: const BorderSide(color: Color(0xFFA2E8DD)),
+              borderSide: const BorderSide(color: Color(0xFFEEE8F6)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
-              borderSide: const BorderSide(color: Color(0xFF32DE8A)),
+              borderSide: const BorderSide(color: Color(0xFFFFFFFF)),
             ),
             floatingLabelBehavior: FloatingLabelBehavior.never,
             labelStyle: const TextStyle(

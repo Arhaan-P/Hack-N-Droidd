@@ -21,6 +21,8 @@ class _ProfileUIState extends State<ProfileUI> {
   String email = "";
   String phone = "";
   String location = "";
+  bool isVerifiedByNGO = true;
+  int creditPoints = 50; // Default credit points
 
   @override
   void initState() {
@@ -47,6 +49,13 @@ class _ProfileUIState extends State<ProfileUI> {
             email = currentUser.email ?? "";
             phone = data['phone'] ?? "";
             location = data['location'] ?? "";
+            if (data['role']?.toLowerCase() == 'buyer') {
+              isVerifiedByNGO = true;
+              creditPoints =
+                  data['creditPoints'] ?? 50; // Load credits or use default
+            } else {
+              isVerifiedByNGO = false;
+            }
           });
         }
       }
@@ -98,10 +107,7 @@ class _ProfileUIState extends State<ProfileUI> {
 
   Future<void> _signOut(BuildContext context) async {
     try {
-      // Sign out from Firebase
       await FirebaseAuth.instance.signOut();
-
-      // Also sign out from Google Sign-In
       final GoogleSignIn googleSignIn = GoogleSignIn();
       await googleSignIn.signOut();
 
@@ -133,37 +139,100 @@ class _ProfileUIState extends State<ProfileUI> {
             Colors.deepPurple[600]!,
           ],
         ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Profile',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  // Back button added here
+                  IconButton(
+                    icon: Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Profile',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              TextButton.icon(
-                onPressed: () => _signOut(context),
-                icon: Icon(Icons.logout, color: Colors.white),
-                label: Text(
-                  'Sign Out',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+              Row(
+                children: [
+                  if (userType.toLowerCase() ==
+                      'buyer') // Only show credits for buyers
+                    Tooltip(
+                      message:
+                          'Earn more credits by:\n• Making donations\n• Referring friends\n• Participating in events',
+                      padding: EdgeInsets.all(12),
+                      margin: EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      textStyle: TextStyle(color: Colors.white),
+                      child: Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.amber[700],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.stars,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              '$creditPoints pts',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  SizedBox(width: 12),
+                  TextButton.icon(
+                    onPressed: () => _signOut(context),
+                    icon: Icon(Icons.logout, color: Colors.white),
+                    label: Text(
+                      'Sign Out',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.red[400],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                   ),
-                ),
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.red[400],
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                ],
               ),
             ],
           ),
@@ -205,6 +274,62 @@ class _ProfileUIState extends State<ProfileUI> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildVerificationCard() {
+    if (userType.toLowerCase() != 'buyer') {
+      return SizedBox.shrink();
+    }
+
+    return Card(
+      elevation: 2,
+      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Container(
+        padding: EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.verified,
+                color: Colors.green,
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'NGO Verification',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Verified by NGO Partner',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -280,6 +405,7 @@ class _ProfileUIState extends State<ProfileUI> {
               child: ListView(
                 padding: EdgeInsets.symmetric(vertical: 20),
                 children: [
+                  _buildVerificationCard(),
                   _buildInfoCard('Email', email, Icons.email, Colors.blue),
                   _buildInfoCard('Phone', phone, Icons.phone, Colors.green),
                   _buildInfoCard(
@@ -293,7 +419,7 @@ class _ProfileUIState extends State<ProfileUI> {
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToEditPage,
         backgroundColor: Colors.deepPurple,
-        child: Icon(Icons.edit),
+        child: Icon(Icons.edit, color: Colors.white),
         elevation: 4,
       ),
     );

@@ -9,7 +9,11 @@ class ItemCard extends StatelessWidget {
   final String title;
   final String description;
   final List<String> categories;
+  final List<String> itemTypes;
+  final String price;
+  final Timestamp? timestamp;
   final VoidCallback? onCartUpdated;
+  final String status;
 
   const ItemCard({
     super.key,
@@ -19,7 +23,11 @@ class ItemCard extends StatelessWidget {
     required this.title,
     required this.description,
     required this.categories,
+    required this.itemTypes,
+    required this.price,
+    this.timestamp,
     this.onCartUpdated,
+    this.status = 'active',
   });
 
   Future<void> _addToCart(
@@ -27,7 +35,6 @@ class ItemCard extends StatelessWidget {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
-    // Add to cart collection
     await FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
@@ -40,17 +47,16 @@ class ItemCard extends StatelessWidget {
       'description': description,
       'imageUrl': imageUrl,
       'categories': categories,
+      'itemTypes': itemTypes,
+      'price': price,
+      'status': status,
     });
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Added to cart!')),
       );
-      // Call the callback to update the cart count
       onCartUpdated?.call();
-      // Remove the direct state access
-      // final dashboardState = context.findAncestorStateOfType<BuyerDashboardState>();
-      // dashboardState?._loadCartItemCount();
     }
   }
 
@@ -79,7 +85,7 @@ class ItemCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
-                      return Center(child: CircularProgressIndicator());
+                      return const Center(child: CircularProgressIndicator());
                     },
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
@@ -102,39 +108,89 @@ class ItemCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Price: ₹$price',
+                            style: const TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.info_outline),
-                      onPressed: () => _showDetailsDialog(
-                          context, title, description, categories),
+                      onPressed: () => _showDetailsDialog(context, title,
+                          description, categories, itemTypes, price),
                       tooltip: 'View Details',
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: categories.map((category) {
-                    return Chip(
-                      label: Text(category),
-                      backgroundColor: _getCategoryColor(category),
-                      labelStyle:
-                          const TextStyle(color: Colors.white, fontSize: 12),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      padding: EdgeInsets.zero,
-                    );
-                  }).toList(),
-                ),
+                if (categories.isNotEmpty) ...[
+                  const Text(
+                    'Categories:',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: categories.map((category) {
+                      return Chip(
+                        label: Text(category),
+                        backgroundColor: _getCategoryColor(category),
+                        labelStyle:
+                            const TextStyle(color: Colors.white, fontSize: 12),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: EdgeInsets.zero,
+                      );
+                    }).toList(),
+                  ),
+                ],
+                if (itemTypes.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Item Types:',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: itemTypes.map((type) {
+                      return Chip(
+                        label: Text(type),
+                        backgroundColor: Colors.purple[300],
+                        labelStyle:
+                            const TextStyle(color: Colors.white, fontSize: 12),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: EdgeInsets.zero,
+                      );
+                    }).toList(),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Text(
                   description,
@@ -143,49 +199,23 @@ class ItemCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          if (sellerId == null) return;
-                          FirebaseFirestore.instance
-                              .collection('reminders')
-                              .add({
-                            'userId': FirebaseAuth.instance.currentUser?.uid,
-                            'sellerId': sellerId,
-                            'itemId': itemId,
-                            'timestamp': Timestamp.now(),
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Reminder set')),
-                          );
-                        },
-                        icon: const Icon(Icons.notifications_active, size: 18),
-                        label: const Text('Remind Later'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue,
-                          side: const BorderSide(color: Colors.blue),
-                        ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        if (sellerId == null) return;
+                        _addToCart(context, sellerId!, itemId);
+                      },
+                      icon: const Icon(Icons.add_shopping_cart, size: 18),
+                      label: const Text('Add to Cart'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
                       ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          if (sellerId == null) return;
-                          _addToCart(context, sellerId!, itemId);
-                        },
-                        icon: const Icon(Icons.add_shopping_cart, size: 18),
-                        label: const Text('Add to Cart'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -237,8 +267,14 @@ class ItemCard extends StatelessWidget {
     );
   }
 
-  void _showDetailsDialog(BuildContext context, String title,
-      String description, List<String> categories) {
+  void _showDetailsDialog(
+    BuildContext context,
+    String title,
+    String description,
+    List<String> categories,
+    List<String> itemTypes,
+    String price,
+  ) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -259,12 +295,26 @@ class ItemCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Price: ₹$price',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       IconButton(
@@ -274,6 +324,15 @@ class ItemCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
+                  const Text(
+                    'Categories',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -285,11 +344,32 @@ class ItemCard extends StatelessWidget {
                       );
                     }).toList(),
                   ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Item Types',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: itemTypes.map((type) {
+                      return Chip(
+                        label: Text(type),
+                        backgroundColor: Colors.purple[300],
+                        labelStyle: const TextStyle(color: Colors.white),
+                      );
+                    }).toList(),
+                  ),
                   const SizedBox(height: 24),
                   const Text(
                     'Description',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w500,
                       color: Colors.grey,
                     ),

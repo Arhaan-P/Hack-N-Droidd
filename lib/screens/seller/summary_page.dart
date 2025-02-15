@@ -5,25 +5,35 @@ import 'package:firebase_auth/firebase_auth.dart';
 class SummaryPage extends StatelessWidget {
   final String? imageUrl;
   final List<String>? selectedCategories;
-  final String? title;
   final String? description;
+  final List<String>? itemTypes;
+  final String? price;
   final bool isViewMode;
+  final String? title;
 
-  // New constructor for viewing all items
+  // Custom color palette
+  static const Color primaryColor = Color(0xFF371F97);
+  static const Color secondaryColor = Color(0xFFEEE8F6);
+  static const Color whiteColor = Color(0xFFFFFFFF);
+  static const Color blackColor = Color(0xFF000000);
+
   SummaryPage.viewAll()
       : imageUrl = null,
         selectedCategories = null,
-        title = null,
         description = null,
+        itemTypes = null,
+        price = null,
+        title = null,
         isViewMode = true;
 
-  // Original constructor for showing a newly added item
   const SummaryPage({
     Key? key,
     required this.imageUrl,
     required this.selectedCategories,
-    required this.title,
     required this.description,
+    required this.itemTypes,
+    required this.price,
+    required this.title,
   })  : isViewMode = false,
         super(key: key);
 
@@ -47,7 +57,7 @@ class SummaryPage extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.close, color: Colors.white),
+                icon: Icon(Icons.close, color: whiteColor),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -57,31 +67,81 @@ class SummaryPage extends StatelessWidget {
     );
   }
 
+  Future<void> _deleteItem(BuildContext context, String itemId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('sellers')
+          .doc(user.uid)
+          .collection('items')
+          .doc(itemId)
+          .delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Item deleted successfully'),
+          backgroundColor: primaryColor,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting item: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: secondaryColor,
       appBar: AppBar(
-        title: Text(isViewMode ? 'Your Items' : 'Item Summary'),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        titleTextStyle: TextStyle(
-          color: Colors.black,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
+        title: Text(
+          isViewMode ? 'Your Items' : 'Item Summary',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
+        backgroundColor: primaryColor,
+        elevation: 10,
+        shadowColor: Colors.black.withOpacity(0.5),
+        centerTitle: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(30),
+          ),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: Colors.white, size: 28),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.more_vert, color: Colors.white, size: 28),
+            onPressed: () {},
+          ),
+        ],
       ),
       floatingActionButton: isViewMode
           ? null
           : FloatingActionButton.extended(
               onPressed: () => Navigator.pop(context),
-              label: Text('Add More Items'),
-              icon: Icon(Icons.add_photo_alternate),
-              backgroundColor: Colors.blue,
+              label: Text(
+                'Add More Items',
+                style: TextStyle(color: Colors.white),
+              ),
+              icon: Icon(
+                Icons.add_photo_alternate,
+                color: Colors.white,
+              ),
+              backgroundColor: primaryColor,
             ),
       body: SingleChildScrollView(
         child: Column(
@@ -95,137 +155,7 @@ class SummaryPage extends StatelessWidget {
     );
   }
 
-  void _showDetailsDialog(
-      BuildContext context, String title, String description) {
-    // State variables for tracking edit mode
-    bool isTitleEditing = false;
-    bool isDescriptionEditing = false;
-
-    // Controllers initialized with existing values
-    final titleController = TextEditingController(text: title);
-    final descriptionController = TextEditingController(text: description);
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(24),
-                constraints: BoxConstraints(maxWidth: 400),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title section
-                      GestureDetector(
-                        onTap: () => setState(() => isTitleEditing = true),
-                        child: isTitleEditing
-                            ? TextField(
-                                controller: titleController,
-                                autofocus: true,
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: InputDecoration(
-                                  contentPadding:
-                                      EdgeInsets.symmetric(vertical: 8),
-                                  border: UnderlineInputBorder(),
-                                  focusedBorder: UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                        color: Colors.blue, width: 2),
-                                  ),
-                                ),
-                                onSubmitted: (_) =>
-                                    setState(() => isTitleEditing = false),
-                              )
-                            : Text(
-                                title.isEmpty ? 'Untitled Item' : title,
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                      SizedBox(height: 24),
-
-                      // Description section
-                      Text(
-                        'Description',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () =>
-                            setState(() => isDescriptionEditing = true),
-                        child: isDescriptionEditing
-                            ? TextField(
-                                controller: descriptionController,
-                                autofocus: true,
-                                maxLines: null,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[800],
-                                ),
-                                decoration: InputDecoration(
-                                  contentPadding:
-                                      EdgeInsets.symmetric(vertical: 8),
-                                  border: UnderlineInputBorder(),
-                                  focusedBorder: UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                        color: Colors.blue, width: 2),
-                                  ),
-                                ),
-                                onSubmitted: (_) => setState(
-                                    () => isDescriptionEditing = false),
-                              )
-                            : Text(
-                                description.isEmpty
-                                    ? 'No description provided'
-                                    : description,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
-                      ),
-                      SizedBox(height: 24),
-
-                      // Close button with updated styling
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: IconButton(
-                          icon: Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
-                          padding: EdgeInsets.zero,
-                          constraints: BoxConstraints(),
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   Widget _buildItemPreview(BuildContext context) {
-    // If any required field is null, return an empty container
     if (imageUrl == null || selectedCategories == null) {
       return Container();
     }
@@ -233,11 +163,11 @@ class SummaryPage extends StatelessWidget {
     return Container(
       margin: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: whiteColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: blackColor.withOpacity(0.05),
             blurRadius: 10,
             offset: Offset(0, 2),
           ),
@@ -259,7 +189,11 @@ class SummaryPage extends StatelessWidget {
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
-                      return Center(child: CircularProgressIndicator());
+                      return Center(
+                        child: CircularProgressIndicator(
+                          color: primaryColor,
+                        ),
+                      );
                     },
                   ),
                 ),
@@ -271,52 +205,52 @@ class SummaryPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Recently Added Item',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (title?.isNotEmpty ?? false)
-                            Padding(
-                              padding: EdgeInsets.only(top: 4),
-                              child: Text(
-                                title!,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.info_outline),
-                      onPressed: () => _showDetailsDialog(
-                        context,
-                        title ?? '',
-                        description ?? '',
-                      ),
-                      tooltip: 'View Details',
-                    ),
-                  ],
+                Text(
+                  'Recently Added Item',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
                 ),
+                if (title != null && title!.isNotEmpty) ...[
+                  SizedBox(height: 8),
+                  Text(
+                    title!,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: blackColor,
+                    ),
+                  ),
+                ],
+                if (itemTypes != null && itemTypes!.isNotEmpty) ...[
+                  Text(
+                    'Types: ${itemTypes!.join(", ")}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: blackColor.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+                if (price != null) ...[
+                  SizedBox(height: 8),
+                  Text(
+                    'Price: ₹$price',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
                 SizedBox(height: 12),
                 Text(
                   'Categories:',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey[700],
+                    color: blackColor.withOpacity(0.7),
                   ),
                 ),
                 SizedBox(height: 8),
@@ -327,7 +261,7 @@ class SummaryPage extends StatelessWidget {
                     return Chip(
                       label: Text(category),
                       backgroundColor: _getCategoryColor(category),
-                      labelStyle: TextStyle(color: Colors.white),
+                      labelStyle: TextStyle(color: whiteColor),
                     );
                   }).toList(),
                 ),
@@ -338,28 +272,27 @@ class SummaryPage extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey[700],
+                      color: blackColor.withOpacity(0.7),
                     ),
                   ),
                   SizedBox(height: 4),
                   Text(
                     description!,
                     style: TextStyle(
-                      color: Colors.grey[800],
+                      color: blackColor.withOpacity(0.8),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
                 SizedBox(height: 16),
                 Row(
                   children: [
-                    Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                    Icon(Icons.access_time,
+                        size: 16, color: blackColor.withOpacity(0.6)),
                     SizedBox(width: 4),
                     Text(
                       'Added ${_getFormattedDate()}',
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: blackColor.withOpacity(0.6),
                         fontSize: 14,
                       ),
                     ),
@@ -387,6 +320,7 @@ class SummaryPage extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
+              color: primaryColor,
             ),
           ),
         ),
@@ -404,7 +338,9 @@ class SummaryPage extends StatelessWidget {
             }
 
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return Center(
+                child: CircularProgressIndicator(color: primaryColor),
+              );
             }
 
             final items = snapshot.data?.docs ?? [];
@@ -412,133 +348,163 @@ class SummaryPage extends StatelessWidget {
               return Center(
                 child: Padding(
                   padding: EdgeInsets.all(16),
-                  child: Text('No items found'),
+                  child: Text(
+                    'No items found',
+                    style: TextStyle(color: blackColor.withOpacity(0.7)),
+                  ),
                 ),
               );
             }
+
             return ListView.builder(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final item = items[index].data() as Map<String, dynamic>;
+                final itemId = items[index].id;
                 final categories = List<String>.from(item['categories'] ?? []);
                 final itemImageUrl = item['imageUrl'] as String;
-                final itemTitle = item['title'] as String? ?? '';
+                final itemTypes = List<String>.from(item['itemTypes'] ?? []);
                 final itemDescription = item['description'] as String? ?? '';
+                final itemPrice = item['price']?.toString() ?? '';
+                final itemTitle = item['title'] as String? ?? '';
 
-                return Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
+                return Dismissible(
+                  key: Key(itemId),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: EdgeInsets.only(right: 20),
+                    color: Colors.red,
+                    child: Icon(Icons.delete, color: whiteColor),
                   ),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => _showImageDialog(context, itemImageUrl),
-                        child: Hero(
-                          tag: 'item-$itemImageUrl',
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.horizontal(
-                              left: Radius.circular(12),
-                            ),
-                            child: Image.network(
-                              itemImageUrl,
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.cover,
+                  onDismissed: (direction) {
+                    _deleteItem(context, itemId);
+                  },
+                  child: Container(
+                    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: whiteColor,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: blackColor.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => _showImageDialog(context, itemImageUrl),
+                          child: Hero(
+                            tag: 'item-$itemImageUrl',
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.horizontal(
+                                left: Radius.circular(12),
+                              ),
+                              child: Image.network(
+                                itemImageUrl,
+                                width: 120,
+                                height: 120,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (itemTitle.isNotEmpty)
-                                Padding(
-                                  padding: EdgeInsets.only(bottom: 8),
-                                  child: Text(
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (itemTitle.isNotEmpty) ...[
+                                  Text(
                                     itemTitle,
                                     style: TextStyle(
+                                      fontSize: 16,
                                       fontWeight: FontWeight.bold,
+                                      color: primaryColor,
                                     ),
                                   ),
-                                ),
-                              Wrap(
-                                spacing: 4,
-                                runSpacing: 4,
-                                children: categories.map((category) {
-                                  return Chip(
-                                    label: Text(
-                                      category,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    backgroundColor:
-                                        _getCategoryColor(category),
-                                    padding: EdgeInsets.zero,
-                                    materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  );
-                                }).toList(),
-                              ),
-                              SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  if (item['timestamp'] != null)
-                                    Text(
-                                      _getFormattedDate(
-                                        item['timestamp'] as Timestamp,
-                                      ),
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  if (itemDescription.isNotEmpty)
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.info_outline,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => _showDetailsDialog(
-                                        context,
-                                        itemTitle,
-                                        itemDescription,
-                                      ),
-                                      padding: EdgeInsets.zero,
-                                      constraints: BoxConstraints(),
-                                      tooltip: 'View Details',
-                                    ),
+                                  SizedBox(height: 4),
                                 ],
-                              ),
-                            ],
+                                Text(
+                                  'Type: $itemTypes',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: blackColor,
+                                  ),
+                                ),
+                                if (itemPrice.isNotEmpty) ...[
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Price: ₹$itemPrice',
+                                    style: TextStyle(
+                                      color: primaryColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                                SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 4,
+                                  runSpacing: 4,
+                                  children: categories.map((category) {
+                                    return Chip(
+                                      label: Text(
+                                        category,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: whiteColor,
+                                        ),
+                                      ),
+                                      backgroundColor:
+                                          _getCategoryColor(category),
+                                      padding: EdgeInsets.zero,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    );
+                                  }).toList(),
+                                ),
+                                if (itemDescription.isNotEmpty) ...[
+                                  SizedBox(height: 8),
+                                  Text(
+                                    itemDescription,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: blackColor.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                                if (item['timestamp'] != null) ...[
+                                  SizedBox(height: 8),
+                                  Text(
+                                    _getFormattedDate(
+                                        item['timestamp'] as Timestamp),
+                                    style: TextStyle(
+                                      color: blackColor.withOpacity(0.6),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },
             );
           },
         ),
-        SizedBox(height: 80), // Add padding at bottom for FAB
+        SizedBox(height: 80),
       ],
     );
   }
@@ -546,13 +512,13 @@ class SummaryPage extends StatelessWidget {
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
       case 'donate':
-        return Colors.green[600]!;
+        return primaryColor.withOpacity(0.8);
       case 'recyclable':
-        return Colors.blue[600]!;
+        return primaryColor;
       case 'non-recyclable':
-        return Colors.orange[600]!;
+        return primaryColor.withOpacity(0.6);
       default:
-        return Colors.grey[600]!;
+        return blackColor.withOpacity(0.6);
     }
   }
 
